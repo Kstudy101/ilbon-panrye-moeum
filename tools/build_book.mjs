@@ -53,6 +53,12 @@ function firstSegment(s) {
   return (s || '').replace(/\*/g, '').split(/[（(]/)[0].trim();
 }
 
+// 용어의 「과목」 메타를 목차 카테고리로 정규화한다
+function termCat(subject) {
+  if (subject === '회사법' || subject === '상법') return '회사법·상법';
+  return subject || '기타';
+}
+
 function resultChip(conclusion) {
   const c = conclusion || '';
   if (c.includes('위헌')) return { label: '위헌', cls: 'shu' };
@@ -113,6 +119,7 @@ if (fs.existsSync(termDir)) {
     const { title, body, meta } = parseDoc(readMd(path.join(termDir, f)));
     return {
       type: 'term', subject: '용어',
+      cat: termCat(firstSegment(meta['과목'])),
       file: f.replace(/\.md$/, '').normalize('NFC'),
       id: title || f.replace(/\.md$/, '').normalize('NFC'),
       title: title || f.replace(/\.md$/, '').normalize('NFC'),
@@ -265,9 +272,19 @@ for (const subject of subjects) {
   const items = entries.filter(e => e.type === 'case' && e.subject === subject.name).map(e => e.id);
   if (items.length) groups.push({ name: `${subject.name} 판례`, items });
 }
+// 용어는 과목별 카테고리로 나눈다
 {
-  const items = entries.filter(e => e.type === 'term').map(e => e.id);
-  if (items.length) groups.push({ name: '용어', items });
+  const CAT_ORDER = ['헌법', '행정법', '민법', '기초법학', '회사법·상법', '일반지식'];
+  const byCat = new Map();
+  for (const e of entries.filter(e => e.type === 'term')) {
+    if (!byCat.has(e.cat)) byCat.set(e.cat, []);
+    byCat.get(e.cat).push(e.id);
+  }
+  const cats = [...byCat.keys()].sort((a, b) => {
+    const ia = CAT_ORDER.indexOf(a), ib = CAT_ORDER.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b, 'ko');
+  });
+  for (const c of cats) groups.push({ name: `${c} 용어`, items: byCat.get(c) });
 }
 {
   const items = entries.filter(e => e.type === 'kr').map(e => e.id);
@@ -340,28 +357,56 @@ code{background:var(--code-bg); padding:.1em .35em; border-radius:3px; font-size
   background:var(--surface); border-right:1px solid var(--line);
   display:flex; flex-direction:column;
 }
-.side-head{padding:20px 18px 12px; border-bottom:1px solid var(--line)}
+.side-head{
+  padding:20px 18px 12px; border-bottom:1px solid var(--line);
+  display:flex; align-items:flex-start; gap:10px;
+}
+.side-head .titles{flex:1; min-width:0}
 .side-head .booktitle{
   font-family:'Noto Serif KR','Noto Serif JP',serif; font-weight:900; font-size:20px;
   letter-spacing:.02em; display:block; color:var(--ink);
 }
 .side-head .booktitle:hover{text-decoration:none; color:var(--ai)}
 .side-head .subtitle{color:var(--muted); font-size:12.5px; margin-top:2px}
+.icon-btn{
+  flex:none; background:none; border:1px solid var(--line); border-radius:7px;
+  color:var(--muted); cursor:pointer; padding:5px 7px; line-height:0;
+}
+.icon-btn:hover{color:var(--ai); border-color:var(--ai)}
+.icon-btn svg{width:16px; height:16px; display:block}
 .searchbox{padding:12px 14px; border-bottom:1px solid var(--line)}
 .searchbox input{
   width:100%; padding:8px 12px; border:1px solid var(--line); border-radius:6px;
   background:var(--bg); color:var(--ink); font:inherit; font-size:14px;
 }
 .searchbox input::placeholder{color:var(--muted)}
-.nav{flex:1; overflow-y:auto; padding:8px 0 24px}
-.nav-group{margin-top:14px}
-.nav-group>h2{
-  font-size:11.5px; font-weight:700; color:var(--muted); text-transform:uppercase;
-  letter-spacing:.08em; margin:0 0 4px; padding:0 18px;
-  font-family:'Noto Sans KR','Noto Sans JP',sans-serif;
+.nav{flex:1; overflow-y:auto; padding:6px 0 24px}
+
+/* ---- 카테고리 드롭다운 ---- */
+.nav-group{border-bottom:1px solid var(--line)}
+.nav-group:last-child{border-bottom:0}
+.grp{
+  width:100%; display:flex; align-items:center; gap:8px;
+  background:none; border:0; cursor:pointer; text-align:left;
+  padding:11px 18px; color:var(--ink); font:inherit; font-size:13.5px; font-weight:700;
 }
+.grp:hover{background:var(--nav-active)}
+.grp .chev{
+  flex:none; width:13px; height:13px; color:var(--muted);
+  transition:transform .18s ease;
+}
+.nav-group.open .grp .chev{transform:rotate(90deg)}
+.grp .gname{flex:1; min-width:0}
+.grp .cnt{
+  flex:none; font-size:11.5px; font-weight:700; color:var(--muted);
+  font-variant-numeric:tabular-nums; background:var(--nav-active);
+  border-radius:9px; padding:1px 8px;
+}
+.grp:hover .cnt{background:var(--bg)}
+.grp-body{display:none; padding-bottom:6px}
+.nav-group.open .grp-body{display:block}
 .nav-item{
-  display:block; padding:7px 18px; border-left:3px solid transparent; color:var(--ink);
+  display:block; padding:7px 18px 7px 39px; border-left:3px solid transparent; color:var(--ink);
 }
 .nav-item:hover{background:var(--nav-active); text-decoration:none}
 .nav-item[aria-current="page"]{background:var(--nav-active); border-left-color:var(--ai)}
@@ -378,6 +423,22 @@ code{background:var(--code-bg); padding:.1em .35em; border-radius:3px; font-size
 .chip.shu{background:var(--chip-shu-bg); color:var(--chip-shu-fg)}
 .no-result{padding:16px 18px; color:var(--muted); font-size:13.5px}
 .scrim{display:none; position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:35}
+
+/* ---- 사이드바 열고 닫기 (데스크톱) ---- */
+.sidebar{transition:transform .22s ease}
+.main{transition:margin-left .22s ease}
+body.sb-closed .sidebar{transform:translateX(-100%)}
+body.sb-closed .main{margin-left:0}
+.sb-open-btn{
+  display:none; position:fixed; top:16px; left:16px; z-index:45;
+  align-items:center; gap:7px; padding:8px 13px;
+  background:var(--surface); border:1px solid var(--line); border-radius:9px;
+  color:var(--ink); font:inherit; font-size:13px; font-weight:700;
+  cursor:pointer; box-shadow:var(--shadow);
+}
+.sb-open-btn:hover{color:var(--ai); border-color:var(--ai)}
+.sb-open-btn svg{width:15px; height:15px}
+body.sb-closed .sb-open-btn{display:flex}
 
 /* ---- 본문 ---- */
 .main{margin-left:300px; min-height:100vh}
@@ -464,9 +525,12 @@ code{background:var(--code-bg); padding:.1em .35em; border-radius:3px; font-size
 @media (max-width:900px){
   .topbar{display:flex}
   .sidebar{transform:translateX(-100%); transition:transform .22s ease; box-shadow:none; width:min(320px,86vw)}
-  .sidebar.open{transform:translateX(0); box-shadow:0 0 40px rgba(0,0,0,.25)}
+  .sidebar.open,
+  body.sb-closed .sidebar.open{transform:translateX(0); box-shadow:0 0 40px rgba(0,0,0,.25)}
   .scrim.show{display:block}
-  .main{margin-left:0}
+  .main,
+  body.sb-closed .main{margin-left:0}
+  body.sb-closed .sb-open-btn{display:none}
   .page{padding:28px 18px 64px}
   .cover{padding-top:4vh}
 }
@@ -481,10 +545,20 @@ code{background:var(--code-bg); padding:.1em .35em; border-radius:3px; font-size
 </div>
 <div class="scrim" id="scrim"></div>
 
+<button class="sb-open-btn" id="sbOpen" title="목차 열기">
+  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 4h12M2 8h12M2 12h12"/></svg>
+  목차
+</button>
+
 <aside class="sidebar" id="sidebar">
   <div class="side-head">
-    <a class="booktitle" href="#/">行政書士 判例帖</a>
-    <div class="subtitle">일본 행정서사 판례·용어집</div>
+    <div class="titles">
+      <a class="booktitle" href="#/">行政書士 判例帖</a>
+      <div class="subtitle">일본 행정서사 판례·용어집</div>
+    </div>
+    <button class="icon-btn" id="sbClose" aria-label="목차 닫기" title="목차 닫기">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg>
+    </button>
   </div>
   <div class="searchbox">
     <input id="search" type="search" placeholder="판례·용어 검색  ( / )" aria-label="검색">
@@ -504,6 +578,23 @@ const $search = document.getElementById('search');
 const $sidebar = document.getElementById('sidebar');
 const $scrim = document.getElementById('scrim');
 const $menuBtn = document.getElementById('menuBtn');
+const $sbOpen = document.getElementById('sbOpen');
+const $sbClose = document.getElementById('sbClose');
+
+// 접힌 카테고리와 사이드바 상태는 브라우저에 기억시킨다
+function store(key, val){
+  try { if (val === undefined) return localStorage.getItem(key); localStorage.setItem(key, val); }
+  catch (e) { return null; }
+}
+const openGroups = new Set((function(){
+  try { return JSON.parse(store('hanreicho.groups') || '[]'); } catch (e) { return []; }
+})());
+function saveGroups(){ store('hanreicho.groups', JSON.stringify([...openGroups])); }
+
+function groupOf(id){
+  for (const g of DATA.groups) if (g.items.indexOf(id) >= 0) return g.name;
+  return null;
+}
 
 function currentId(){
   const h = location.hash;
@@ -529,7 +620,15 @@ function renderNav(){
     });
     if (!items.length) continue;
     any = true;
-    html += '<div class="nav-group"><h2>' + g.name + ' · ' + items.length + '</h2>';
+    // 검색 중에는 결과가 있는 카테고리를 모두 펼쳐 둔다
+    const open = q ? true : openGroups.has(g.name);
+    html += '<section class="nav-group' + (open ? ' open' : '') + '">' +
+      '<button class="grp" type="button" data-g="' + g.name + '" aria-expanded="' + open + '">' +
+      '<svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3l5 5-5 5"/></svg>' +
+      '<span class="gname">' + g.name + '</span>' +
+      '<span class="cnt">' + items.length + '</span></button>' +
+      '<div class="grp-body">';
     for (const id of items){
       const e = DATA.entries[id];
       html += '<a class="nav-item" href="#/e/' + encodeURIComponent(id) + '"' +
@@ -537,7 +636,7 @@ function renderNav(){
         '<span class="t">' + e.title + '</span>' +
         '<span class="s">' + (e.sub || '') + chipHtml(e.chip) + '</span></a>';
     }
-    html += '</div>';
+    html += '</div></section>';
   }
   $nav.innerHTML = any ? html : '<div class="no-result">검색 결과가 없습니다.</div>';
 }
@@ -591,7 +690,12 @@ function renderEntry(id){
 
 function route(){
   const id = currentId();
-  if (id) renderEntry(id); else renderCover();
+  if (id){
+    // 지금 보고 있는 항목의 카테고리는 펼쳐 둔다
+    const gn = groupOf(id);
+    if (gn && !openGroups.has(gn)){ openGroups.add(gn); saveGroups(); }
+    renderEntry(id);
+  } else renderCover();
   renderNav();
   closeSidebar();
 }
@@ -599,8 +703,30 @@ function route(){
 function openSidebar(){ $sidebar.classList.add('open'); $scrim.classList.add('show'); }
 function closeSidebar(){ $sidebar.classList.remove('open'); $scrim.classList.remove('show'); }
 
+function setCollapsed(collapsed){
+  document.body.classList.toggle('sb-closed', collapsed);
+  store('hanreicho.sidebar', collapsed ? '1' : '0');
+}
+if (store('hanreicho.sidebar') === '1') document.body.classList.add('sb-closed');
+
 $menuBtn.addEventListener('click', openSidebar);
 $scrim.addEventListener('click', closeSidebar);
+$sbClose.addEventListener('click', () => {
+  if (window.matchMedia('(max-width: 900px)').matches) closeSidebar();
+  else setCollapsed(true);
+});
+$sbOpen.addEventListener('click', () => setCollapsed(false));
+
+// 카테고리 펼치기·접기
+$nav.addEventListener('click', ev => {
+  const btn = ev.target.closest('.grp');
+  if (!btn) return;
+  const name = btn.dataset.g;
+  if (openGroups.has(name)) openGroups.delete(name); else openGroups.add(name);
+  saveGroups();
+  renderNav();
+});
+
 $search.addEventListener('input', renderNav);
 document.addEventListener('keydown', ev => {
   if (ev.key === '/' && document.activeElement !== $search){
