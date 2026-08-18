@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const SKIP_DIRS = new Set(['.git', 'tools', 'node_modules', '용어']);
+const SKIP_DIRS = new Set(['.git', 'tools', 'node_modules', '용어', '한국비교']);
 
 // 한글 파일명은 NFC/NFD 정규화가 섞여 있을 수 있으므로 정규화 비교로 찾는다
 function findEntry(dir, nfcName) {
@@ -127,18 +127,27 @@ if (fs.existsSync(termDir)) {
   entries.push(...docs);
 }
 
-// 부록: 한국 행정사 판례 리스트
-const krPath = findEntry(ROOT, '행정서사_판례_리스트.md');
-if (fs.existsSync(krPath)) {
-  const { title, body } = parseDoc(readMd(krPath));
-  entries.push({
-    type: 'extra', subject: '부록',
-    id: title || '한국 행정사 판례',
-    title: title || '한국 행정사 판례',
-    sub: '한국 대법원·헌재',
-    chip: null,
-    raw: body,
+// 한국 비교자료 (일본 판례·용어에 대응하는 한국 법리·판례)
+const krDir = findEntry(ROOT, '한국비교');
+const krOrder = listOrder(findEntry(ROOT, '한국비교리스트.md'));
+if (fs.existsSync(krDir)) {
+  const docs = fs.readdirSync(krDir).filter(f => f.endsWith('.md')).map(f => {
+    const { title, body, meta } = parseDoc(readMd(path.join(krDir, f)));
+    return {
+      type: 'kr', subject: '한국비교',
+      id: title || f.replace(/\.md$/, '').normalize('NFC'),
+      title: title || f.replace(/\.md$/, '').normalize('NFC'),
+      sub: firstSegment(meta['인용']) || '비교자료',
+      chip: resultChip(meta['결론']),
+      raw: body,
+    };
   });
+  docs.sort((a, b) => {
+    const oa = krOrder.has(a.title) ? krOrder.get(a.title) : 9999;
+    const ob = krOrder.has(b.title) ? krOrder.get(b.title) : 9999;
+    return oa - ob || a.title.localeCompare(b.title, 'ko');
+  });
+  entries.push(...docs);
 }
 
 // ---------- 마크다운 → HTML ----------
@@ -251,12 +260,13 @@ for (const subject of subjects) {
   if (items.length) groups.push({ name: '용어', items });
 }
 {
-  const items = entries.filter(e => e.type === 'extra').map(e => e.id);
-  if (items.length) groups.push({ name: '부록 · 한국 행정사', items });
+  const items = entries.filter(e => e.type === 'kr').map(e => e.id);
+  if (items.length) groups.push({ name: '한국 비교', items });
 }
 
 const nCases = entries.filter(e => e.type === 'case').length;
 const nTerms = entries.filter(e => e.type === 'term').length;
+const nKr = entries.filter(e => e.type === 'kr').length;
 
 const DATA = { groups, entries: Object.fromEntries(entries.map(e => [e.id, e])) };
 const dataJson = JSON.stringify(DATA).replace(/</g, '\\u003c');
@@ -523,7 +533,7 @@ function renderNav(){
 }
 
 function renderCover(){
-  const nCases = ${nCases}, nTerms = ${nTerms};
+  const nCases = ${nCases}, nTerms = ${nTerms}, nKr = ${nKr};
   let toc = '';
   for (const g of DATA.groups){
     toc += '<a href="#/e/' + encodeURIComponent(g.items[0]) + '">' +
@@ -537,6 +547,7 @@ function renderCover(){
     '<div class="counts">' +
     '<div><b>' + nCases + '</b><span>판례</span></div>' +
     '<div><b>' + nTerms + '</b><span>용어</span></div>' +
+    (nKr ? '<div><b>' + nKr + '</b><span>한국 비교</span></div>' : '') +
     '</div>' +
     '<div class="toc">' + toc + '</div></div>';
   document.title = '行政書士 判例帖';
@@ -548,7 +559,6 @@ function renderEntry(id){
   const idx = FLAT.indexOf(id);
   const prev = idx > 0 ? DATA.entries[FLAT[idx-1]] : null;
   const next = idx < FLAT.length-1 ? DATA.entries[FLAT[idx+1]] : null;
-  const eyebrow = e.type === 'term' ? '용어 · ' + '' : e.subject + ' · 판례';
   const meta = [];
   if (e.sub) meta.push('<span>' + e.sub + '</span>');
   if (e.chip) meta.push(chipHtml(e.chip));
@@ -559,7 +569,7 @@ function renderEntry(id){
   $page.innerHTML =
     '<article>' +
     '<header class="doc-head">' +
-    '<div class="eyebrow">' + (e.type === 'term' ? '용어' : e.type === 'extra' ? '부록' : e.subject + ' 판례') + '</div>' +
+    '<div class="eyebrow">' + (e.type === 'term' ? '용어' : e.type === 'kr' ? '한국 비교' : e.subject + ' 판례') + '</div>' +
     '<h1>' + e.title + '</h1>' +
     (meta.length ? '<div class="meta-line">' + meta.join('') + '</div>' : '') +
     '</header>' +
@@ -593,5 +603,5 @@ route();
 </script>
 `;
 
-fs.writeFileSync(path.join(ROOT, 'book.html'), html, 'utf8');
-console.log(`book.html 생성 완료: 판례 ${nCases}건, 용어 ${nTerms}건, 항목 ${entries.length}개`);
+fs.writeFileSync(path.join(ROOT, 'index.html'), html, 'utf8');
+console.log(`index.html 생성 완료: 판례 ${nCases}건, 용어 ${nTerms}건, 한국 비교 ${nKr}건, 항목 ${entries.length}개`);
