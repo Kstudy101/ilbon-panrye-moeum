@@ -47,6 +47,7 @@
 
 웹 책은 Cloudflare Pages로 서빙한다: **https://ilbon-panrye-moeum.pages.dev/**
 
+- 리스트 갱신: `node tools/update_lists.mjs` → [용어리스트.md](용어리스트.md)의 「상세」 열을 실제 존재하는 용어 파일로 자동 채우고, 아직 없는 용어를 보고한다 (이미 채워진 칸과 「한국 비교」 열은 건드리지 않음)
 - 빌드: `node tools/build_book.mjs` → 저장소 루트에 `index.html` 생성 (**커밋 대상**)
 - 배포: 커밋 후 `git push` → GitHub(Kstudy101/ilbon-panrye-moeum) → Cloudflare Pages 자동 배포
 - **판례·용어·비교자료를 추가·수정할 때마다 빌드 → 커밋 → 푸시까지가 한 세트다.**
