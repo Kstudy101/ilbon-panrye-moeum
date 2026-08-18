@@ -89,6 +89,7 @@ for (const subject of subjects) {
     const { title, body, meta } = parseDoc(readMd(path.join(ROOT, subject.dir, f)));
     return {
       type: 'case', subject: subject.name,
+      file: f.replace(/\.md$/, '').normalize('NFC'),
       id: title || f.replace(/\.md$/, '').normalize('NFC'),
       title: title || f.replace(/\.md$/, '').normalize('NFC'),
       sub: firstSegment(meta['인용']),
@@ -112,6 +113,7 @@ if (fs.existsSync(termDir)) {
     const { title, body, meta } = parseDoc(readMd(path.join(termDir, f)));
     return {
       type: 'term', subject: '용어',
+      file: f.replace(/\.md$/, '').normalize('NFC'),
       id: title || f.replace(/\.md$/, '').normalize('NFC'),
       title: title || f.replace(/\.md$/, '').normalize('NFC'),
       sub: firstSegment(meta['읽기']) || firstSegment(meta['과목']),
@@ -135,6 +137,7 @@ if (fs.existsSync(krDir)) {
     const { title, body, meta } = parseDoc(readMd(path.join(krDir, f)));
     return {
       type: 'kr', subject: '한국비교',
+      file: f.replace(/\.md$/, '').normalize('NFC'),
       id: title || f.replace(/\.md$/, '').normalize('NFC'),
       title: title || f.replace(/\.md$/, '').normalize('NFC'),
       sub: firstSegment(meta['인용']) || '비교자료',
@@ -152,7 +155,13 @@ if (fs.existsSync(krDir)) {
 
 // ---------- 마크다운 → HTML ----------
 
-const idSet = new Set(entries.map(e => e.id));
+// 링크는 파일명으로 걸리지만 항목 id는 문서 제목이다.
+// 제목에 별칭이 붙은 파일(「議員定数不均衡訴訟（一票の格差）」 등)도 찾아가도록 양쪽을 등록한다.
+const aliasMap = new Map();
+for (const e of entries) {
+  aliasMap.set(e.id, e.id);
+  if (e.file && !aliasMap.has(e.file)) aliasMap.set(e.file, e.id);
+}
 
 function esc(s) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -163,7 +172,8 @@ function resolveLink(url, text) {
     let name = url.split('/').pop().replace(/\.md$/i, '');
     try { name = decodeURIComponent(name); } catch { /* 그대로 사용 */ }
     name = name.normalize('NFC');
-    if (idSet.has(name)) return `<a href="#/e/${encodeURIComponent(name)}">${text}</a>`;
+    const id = aliasMap.get(name);
+    if (id) return `<a href="#/e/${encodeURIComponent(id)}">${text}</a>`;
     return `<span>${text}</span>`;
   }
   if (/^https?:\/\//.test(url)) {
