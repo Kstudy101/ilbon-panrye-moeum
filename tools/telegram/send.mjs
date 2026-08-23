@@ -190,21 +190,32 @@ function formatQuizMessage(it) {
 
 // ---------- 텔레그램 전송 ----------
 
-async function sendTelegramMessage(text) {
+// 네트워크 일시 오류(ETIMEDOUT 등)는 짧게 재시도해서, GitHub Actions 러너의
+// 순간적인 네트워크 흔들림 때문에 그 회차 발송 전체가 죽는 일을 막는다.
+async function sendTelegramMessage(text, retries = 2) {
   const url = `https://api.telegram.org/bot${TOKEN}/sendMessage`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      chat_id: CHAT_ID,
-      text,
-      parse_mode: 'HTML',
-      disable_web_page_preview: true,
-    }),
-  });
-  const data = await res.json();
-  if (!data.ok) throw new Error('텔레그램 전송 실패: ' + JSON.stringify(data));
-  return data;
+  let lastErr;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: CHAT_ID,
+          text,
+          parse_mode: 'HTML',
+          disable_web_page_preview: true,
+        }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error('텔레그램 전송 실패: ' + JSON.stringify(data));
+      return data;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < retries) await sleep(1500 * (attempt + 1));
+    }
+  }
+  throw lastErr;
 }
 
 // ---------- 메인 ----------
@@ -234,31 +245,41 @@ async function main() {
 
   const quizBatch = pickBatch(quizPool, state, reviewRatio, nowMs, cfg.quizBatchSize ?? 5);
   const termBatch = pickBatch(termPool, state, reviewRatio, nowMs, cfg.termBatchSize ?? 5);
+  const jobs = [
+    ...quizBatch.map(it => ({ it, kind: 'quiz', text: () => formatQuizMessage(it) })),
+    ...termBatch.map(it => ({ it, kind: 'term', text: () => formatTermMessage(it) })),
+  ];
 
   let sent = 0;
-  for (const it of quizBatch) {
-    await sendTelegramMessage(formatQuizMessage(it));
-    updateState(state, it, nowMs);
-    sent++;
-    console.log(`[telegram] 발송: quiz / ${it.id}`);
-    if (sent < quizBatch.length + termBatch.length) await sleep(delayMs);
-  }
-  for (const it of termBatch) {
-    await sendTelegramMessage(formatTermMessage(it));
-    updateState(state, it, nowMs);
-    sent++;
-    console.log(`[telegram] 발송: term / ${it.id}`);
-    if (sent < quizBatch.length + termBatch.length) await sleep(delayMs);
+  let failed = 0;
+  // 한 항목의 포맷팅·전송이 실패해도(예: 예상 밖 콘텐츠, 순간적 네트워크 오류)
+  // 그 항목만 건너뛰고 나머지는 계속 보낸다 — 한 번의 실행이 통째로 멈추지 않게.
+  for (const job of jobs) {
+    try {
+      await sendTelegramMessage(job.text());
+      updateState(state, job.it, nowMs);
+      sent++;
+      console.log(`[telegram] 발송: ${job.kind} / ${job.it.id}`);
+    } catch (err) {
+      failed++;
+      console.error(`[telegram] 실패(건너뜀): ${job.kind} / ${job.it.id} —`, err.message || err);
+    }
+    if (job !== jobs[jobs.length - 1]) await sleep(delayMs);
   }
 
-  if (!sent) {
+  // 하나라도 보냈다면(또는 실패가 있었다면) 지금까지의 진행 상황을 반드시 저장한다.
+  if (sent > 0) {
+    state.lastRunAt = nowMs;
+    saveJson(statePath, state);
+  }
+
+  if (!sent && !failed) {
     console.log('[telegram] 보낼 항목이 없습니다.');
     return;
   }
-
-  state.lastRunAt = nowMs;
-  saveJson(statePath, state);
-  console.log(`[telegram] 이번 실행 총 ${sent}건 발송 완료 (퀴즈 ${quizBatch.length} / 용어 ${termBatch.length})`);
+  console.log(`[telegram] 이번 실행: 성공 ${sent}건 / 실패 ${failed}건 (퀴즈 ${quizBatch.length} / 용어 ${termBatch.length})`);
+  // 전부 실패했을 때만 워크플로를 실패로 표시해 GitHub이 알림을 보내게 한다.
+  if (sent === 0 && failed > 0) process.exitCode = 1;
 }
 
 main().catch(err => {

@@ -179,8 +179,58 @@
       "sendCount": 1,
       "lastSentAt": 1787484830623,
       "nextDueAt": 1787571230623
+    },
+    "quiz:q02": {
+      "sendCount": 1,
+      "lastSentAt": 1787485188594,
+      "nextDueAt": 1787571588594
+    },
+    "quiz:q14": {
+      "sendCount": 1,
+      "lastSentAt": 1787485188594,
+      "nextDueAt": 1787571588594
+    },
+    "quiz:q25": {
+      "sendCount": 1,
+      "lastSentAt": 1787485188594,
+      "nextDueAt": 1787571588594
+    },
+    "quiz:q06": {
+      "sendCount": 1,
+      "lastSentAt": 1787485188594,
+      "nextDueAt": 1787571588594
+    },
+    "quiz:q08": {
+      "sendCount": 1,
+      "lastSentAt": 1787485188594,
+      "nextDueAt": 1787571588594
+    },
+    "term:夫婦関係": {
+      "sendCount": 1,
+      "lastSentAt": 1787485188594,
+      "nextDueAt": 1787571588594
+    },
+    "term:行政契約": {
+      "sendCount": 1,
+      "lastSentAt": 1787485188594,
+      "nextDueAt": 1787571588594
+    },
+    "term:脱字挿入問題": {
+      "sendCount": 1,
+      "lastSentAt": 1787485188594,
+      "nextDueAt": 1787571588594
+    },
+    "term:法源": {
+      "sendCount": 1,
+      "lastSentAt": 1787485188594,
+      "nextDueAt": 1787571588594
+    },
+    "term:申請に対する処分": {
+      "sendCount": 1,
+      "lastSentAt": 1787485188594,
+      "nextDueAt": 1787571588594
     }
   },
-  "lastSentId": "term:行政罰",
-  "lastRunAt": 1787484830623
+  "lastSentId": "term:申請に対する処分",
+  "lastRunAt": 1787485188594
 }
