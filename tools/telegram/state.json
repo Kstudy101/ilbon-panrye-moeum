@@ -201,9 +201,9 @@
       "nextDueAt": 1787571588594
     },
     "quiz:q08": {
-      "sendCount": 1,
-      "lastSentAt": 1787485188594,
-      "nextDueAt": 1787571588594
+      "sendCount": 2,
+      "lastSentAt": 1787493333590,
+      "nextDueAt": 1787752533590
     },
     "term:夫婦関係": {
       "sendCount": 1,
@@ -229,8 +229,53 @@
       "sendCount": 1,
       "lastSentAt": 1787485188594,
       "nextDueAt": 1787571588594
+    },
+    "quiz:q26": {
+      "sendCount": 1,
+      "lastSentAt": 1787493333590,
+      "nextDueAt": 1787579733590
+    },
+    "quiz:q17": {
+      "sendCount": 1,
+      "lastSentAt": 1787493333590,
+      "nextDueAt": 1787579733590
+    },
+    "quiz:q05": {
+      "sendCount": 1,
+      "lastSentAt": 1787493333590,
+      "nextDueAt": 1787579733590
+    },
+    "quiz:q04": {
+      "sendCount": 1,
+      "lastSentAt": 1787493333590,
+      "nextDueAt": 1787579733590
+    },
+    "term:国会議員": {
+      "sendCount": 1,
+      "lastSentAt": 1787493333590,
+      "nextDueAt": 1787579733590
+    },
+    "term:不作為の違法確認訴訟": {
+      "sendCount": 1,
+      "lastSentAt": 1787493333590,
+      "nextDueAt": 1787579733590
+    },
+    "term:条件": {
+      "sendCount": 1,
+      "lastSentAt": 1787493333590,
+      "nextDueAt": 1787579733590
+    },
+    "term:法律の法規創造力": {
+      "sendCount": 1,
+      "lastSentAt": 1787493333590,
+      "nextDueAt": 1787579733590
+    },
+    "term:法律の留保": {
+      "sendCount": 1,
+      "lastSentAt": 1787493333590,
+      "nextDueAt": 1787579733590
     }
   },
-  "lastSentId": "term:申請に対する処分",
-  "lastRunAt": 1787485188594
+  "lastSentId": "term:法律の留保",
+  "lastRunAt": 1787493333590
 }
