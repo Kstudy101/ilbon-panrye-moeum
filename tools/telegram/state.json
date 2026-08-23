@@ -74,6 +74,11 @@
       "sendCount": 1,
       "lastSentAt": 1787484426580,
       "nextDueAt": 1787570826580
+    },
+    "term:自力執行力": {
+      "sendCount": 1,
+      "lastSentAt": 1787483876440,
+      "nextDueAt": 1787570276440
     }
   },
   "lastSentId": "term:推定する",
