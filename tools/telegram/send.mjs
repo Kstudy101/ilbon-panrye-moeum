@@ -12,7 +12,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   readMd, parseDoc, section, pickBullet, bullets,
-  mdToTelegramHtml, mdBodyToTelegramHtml, bodyFromFirstHeading, truncate,
+  mdToTelegramHtml, truncate,
   categoryLabel, koreanGloss, resolveEntry, listMdFiles,
 } from './lib.mjs';
 
@@ -56,14 +56,17 @@ function withinWindow(cfg) {
 function buildTermPool(cfg) {
   const files = listMdFiles(TERM_DIR);
   return files.map(f => {
-    const rel = '용어/' + f;
     const { title, meta, body } = parseDoc(readMd(path.join(TERM_DIR, f)));
+    const tipLines = section(body, '## 💡 수험 팁');
+    const gistLines = section(body, '## 🎯 요점·예시');
     return {
       id: 'term:' + title, channel: 'term', title,
       category: categoryLabel(meta['과목']),
       gloss: koreanGloss(meta['읽기']),
       core: meta['한줄 정의'] || '',
-      detailBody: bodyFromFirstHeading(body),
+      concept: pickBullet(gistLines, '요점'),
+      example: pickBullet(gistLines, '예시'),
+      tips: bullets(tipLines).slice(0, 2),
       link: cfg.siteBaseUrl.replace(/\/?$/, '/') + '#/e/' + encodeURIComponent(title),
     };
   });
@@ -139,22 +142,34 @@ function updateState(state, item, nowMs) {
 
 // ---------- 메시지 포맷 ----------
 
-// 용어 카드: 기본 개념부터 관련 판례·수험 팁·요점/예시까지 자세히 담고 링크를 넣는다.
-function formatTermMessage(it, maxChars) {
+// 용어 카드: 핵심·개념·수험 팁·예시를 각각 한두 줄로 축약해 3초 안에 훑어보게 한다.
+function formatTermMessage(it) {
   const titleLine = it.gloss ? `${it.gloss} (${it.title})` : it.title;
   const header = it.category ? `📌 [${it.category}] ${titleLine}` : `📌 ${titleLine}`;
-  const lines = [header];
+  const lines = [header, ''];
 
-  if (it.core) {
+  lines.push('💡 <b>핵심</b>');
+  lines.push(mdToTelegramHtml(truncate(it.core, 140)));
+
+  if (it.concept) {
     lines.push('');
-    lines.push('💡 <b>핵심</b>: ' + mdToTelegramHtml(it.core));
+    lines.push('📖 <b>개념</b>');
+    lines.push(mdToTelegramHtml(truncate(it.concept, 200)));
   }
 
-  const detail = mdBodyToTelegramHtml(it.detailBody, maxChars);
-  if (detail) { lines.push(''); lines.push(detail); }
+  if (it.tips.length) {
+    lines.push('');
+    lines.push('⚖️ <b>수험 팁</b>');
+    for (const t of it.tips) lines.push('• ' + mdToTelegramHtml(truncate(t, 130)));
+  }
+
+  if (it.example) {
+    lines.push('');
+    lines.push('예시 : ' + mdToTelegramHtml(truncate(it.example, 180)));
+  }
 
   lines.push('');
-  lines.push(`🔗 <a href="${it.link}">웹사이트에서 바로가기</a>`);
+  lines.push(`🔗 <a href="${it.link}">웹사이트에서 바로가기</a> (클릭)`);
   return lines.join('\n');
 }
 
@@ -229,7 +244,7 @@ async function main() {
     if (sent < quizBatch.length + termBatch.length) await sleep(delayMs);
   }
   for (const it of termBatch) {
-    await sendTelegramMessage(formatTermMessage(it, cfg.termBodyMaxChars ?? 3200));
+    await sendTelegramMessage(formatTermMessage(it));
     updateState(state, it, nowMs);
     sent++;
     console.log(`[telegram] 발송: term / ${it.id}`);

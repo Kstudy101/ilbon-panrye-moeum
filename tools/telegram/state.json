@@ -79,8 +79,108 @@
       "sendCount": 1,
       "lastSentAt": 1787483876440,
       "nextDueAt": 1787570276440
+    },
+    "quiz:q18": {
+      "sendCount": 1,
+      "lastSentAt": 1787484703564,
+      "nextDueAt": 1787571103564
+    },
+    "quiz:q16": {
+      "sendCount": 1,
+      "lastSentAt": 1787484703564,
+      "nextDueAt": 1787571103564
+    },
+    "quiz:q20": {
+      "sendCount": 1,
+      "lastSentAt": 1787484703564,
+      "nextDueAt": 1787571103564
+    },
+    "quiz:q22": {
+      "sendCount": 1,
+      "lastSentAt": 1787484703564,
+      "nextDueAt": 1787571103564
+    },
+    "quiz:q21": {
+      "sendCount": 1,
+      "lastSentAt": 1787484703564,
+      "nextDueAt": 1787571103564
+    },
+    "term:要件裁量": {
+      "sendCount": 1,
+      "lastSentAt": 1787484703564,
+      "nextDueAt": 1787571103564
+    },
+    "term:検閲": {
+      "sendCount": 1,
+      "lastSentAt": 1787484703564,
+      "nextDueAt": 1787571103564
+    },
+    "term:統治行為論": {
+      "sendCount": 1,
+      "lastSentAt": 1787484703564,
+      "nextDueAt": 1787571103564
+    },
+    "term:当然の法理": {
+      "sendCount": 1,
+      "lastSentAt": 1787484703564,
+      "nextDueAt": 1787571103564
+    },
+    "term:個人情報保護委員会": {
+      "sendCount": 1,
+      "lastSentAt": 1787484703564,
+      "nextDueAt": 1787571103564
+    },
+    "quiz:q24": {
+      "sendCount": 1,
+      "lastSentAt": 1787484830623,
+      "nextDueAt": 1787571230623
+    },
+    "quiz:q10": {
+      "sendCount": 1,
+      "lastSentAt": 1787484830623,
+      "nextDueAt": 1787571230623
+    },
+    "quiz:q23": {
+      "sendCount": 1,
+      "lastSentAt": 1787484830623,
+      "nextDueAt": 1787571230623
+    },
+    "quiz:q13": {
+      "sendCount": 1,
+      "lastSentAt": 1787484830623,
+      "nextDueAt": 1787571230623
+    },
+    "quiz:q03": {
+      "sendCount": 1,
+      "lastSentAt": 1787484830623,
+      "nextDueAt": 1787571230623
+    },
+    "term:法律の公布・施行": {
+      "sendCount": 1,
+      "lastSentAt": 1787484830623,
+      "nextDueAt": 1787571230623
+    },
+    "term:請願権": {
+      "sendCount": 1,
+      "lastSentAt": 1787484830623,
+      "nextDueAt": 1787571230623
+    },
+    "term:両院制": {
+      "sendCount": 1,
+      "lastSentAt": 1787484830623,
+      "nextDueAt": 1787571230623
+    },
+    "term:部分社会の法理": {
+      "sendCount": 1,
+      "lastSentAt": 1787484830623,
+      "nextDueAt": 1787571230623
+    },
+    "term:行政罰": {
+      "sendCount": 1,
+      "lastSentAt": 1787484830623,
+      "nextDueAt": 1787571230623
     }
   },
-  "lastSentId": "term:推定する",
-  "lastRunAt": 1787484426580
+  "lastSentId": "term:行政罰",
+  "lastRunAt": 1787484830623
 }

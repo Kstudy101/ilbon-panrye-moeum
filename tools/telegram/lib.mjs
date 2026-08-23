@@ -34,9 +34,11 @@ export function parseDoc(md) {
 }
 
 // 「## 헤딩」 섹션 하나의 본문 줄들을 반환한다 (다음 「## 」 전까지).
+// heading은 '## 💡 수험 팁'처럼 접두사를 붙여도, '💡 수험 팁'처럼 안 붙여도 매치된다.
 export function section(body, heading) {
   const lines = body.split(/\r?\n/);
-  const startIdx = lines.findIndex(l => l.trim().replace(/^#+\s*/, '').startsWith(heading));
+  const target = heading.replace(/^#+\s*/, '');
+  const startIdx = lines.findIndex(l => l.trim().replace(/^#+\s*/, '').startsWith(target));
   if (startIdx === -1) return [];
   const out = [];
   for (let i = startIdx + 1; i < lines.length; i++) {
@@ -114,81 +116,3 @@ export function listMdFiles(dir) {
   return fs.readdirSync(dir).filter(f => f.endsWith('.md'));
 }
 
-// 메타 표 다음, 첫 「## 」 헤딩부터 파일 끝까지를 통째로 돌려준다.
-// (개념 → 학설 → 관련 판례 → 수험 팁 → 요점·예시 전체)
-export function bodyFromFirstHeading(body) {
-  const lines = body.split(/\r?\n/);
-  const idx = lines.findIndex(l => /^##\s/.test(l));
-  if (idx === -1) return '';
-  return lines.slice(idx).join('\n');
-}
-
-// 마크다운 문서 조각(여러 섹션·표·불릿 포함)을 텔레그램 HTML로 변환한다.
-// 표는 「헤더셀: 값」 나열 방식으로, 헤딩은 굵은 글씨로, 나머지는 문단으로 옮긴다.
-// maxChars를 넘으면 줄 단위로 잘라내고(태그가 중간에서 끊기지 않도록) 안내문을 붙인다.
-export function mdBodyToTelegramHtml(md, maxChars) {
-  const lines = md.split(/\r?\n/);
-  const out = [];
-  let tableHeader = null;
-
-  for (const raw of lines) {
-    const line = raw;
-
-    let m = line.match(/^###\s+(.+)$/);
-    if (m) { out.push(''); out.push('▸ <b>' + mdToTelegramHtml(m[1]) + '</b>'); tableHeader = null; continue; }
-
-    m = line.match(/^##\s+(.+)$/);
-    if (m) { out.push(''); out.push('<b>' + mdToTelegramHtml(m[1]) + '</b>'); tableHeader = null; continue; }
-
-    if (/^\s*\|/.test(line)) {
-      const cells = line.trim().replace(/^\|/, '').replace(/\|\s*$/, '').split('|').map(c => c.trim());
-      if (cells.every(c => /^:?-+:?$/.test(c))) continue; // 구분선(|---|---|) 스킵
-      if (!tableHeader) { tableHeader = cells.map(c => c.replace(/\*/g, '')); continue; }
-      const parts = cells
-        .map((c, i) => {
-          const val = mdToTelegramHtml(c);
-          if (!val) return '';
-          const label = tableHeader[i];
-          return label ? `<b>${escapeHtmlOnly(label)}</b> ${val}` : val;
-        })
-        .filter(Boolean);
-      if (parts.length) out.push('• ' + parts.join('  '));
-      continue;
-    }
-    tableHeader = null;
-
-    const bm = line.trim().match(/^[-*]\s+(.+)$/);
-    if (bm) { out.push('• ' + mdToTelegramHtml(bm[1])); continue; }
-
-    if (line.trim() === '') { out.push(''); continue; }
-    out.push(mdToTelegramHtml(line));
-  }
-
-  // 빈 줄 정리 + 글자수 예산 안에서 줄 단위로 자르기 (태그 깨짐 방지)
-  const collapsed = [];
-  for (const l of out) {
-    if (l === '' && collapsed[collapsed.length - 1] === '') continue;
-    collapsed.push(l);
-  }
-  while (collapsed[0] === '') collapsed.shift();
-  while (collapsed[collapsed.length - 1] === '') collapsed.pop();
-
-  if (!maxChars) return collapsed.join('\n');
-
-  let used = 0;
-  const kept = [];
-  let truncated = false;
-  for (const l of collapsed) {
-    const add = l.length + 1;
-    if (used + add > maxChars) { truncated = true; break; }
-    kept.push(l);
-    used += add;
-  }
-  let text = kept.join('\n');
-  if (truncated) text += '\n\n<i>… (전체 내용은 아래 링크에서 이어서 확인)</i>';
-  return text;
-}
-
-function escapeHtmlOnly(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}

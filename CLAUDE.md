@@ -61,9 +61,9 @@
 
 ## 텔레그램 공부 알리미
 
-`.github/workflows/telegram-study-alerts.yml`이 20분마다 실행되어, 매 실행마다 판례 OX 퀴즈 5건 + 용어 카드 5건(총 10개 메시지)을 텔레그램으로 발송한다. 용어 카드는 압축 요약이 아니라 개념·학설·관련 판례·수험 팁·요점/예시를 포함한 상세 버전이다.
+`.github/workflows/telegram-study-alerts.yml`이 20분마다 실행되어, 매 실행마다 판례 OX 퀴즈 5건 + 용어 카드 5건(총 10개 메시지)을 텔레그램으로 발송한다. 용어 카드는 핵심(한줄 정의)·개념(요점·예시의 「요점」)·수험 팁(최대 2개)·예시를 각각 한두 줄로 축약한 3초 요약형이다.
 
-- **설정**: `tools/telegram/config.json` — `enabled`(토글), `startHour`/`endHour`/`timezone`(발송 시간대), `quizBatchSize`/`termBatchSize`(회당 발송 개수), `reviewRatio`(복습 비율), `messageDelayMs`(메시지 간 간격), `termBodyMaxChars`(용어 카드 본문 글자수 상한, 텔레그램 4096자 제한 방어). 이 파일만 고쳐 커밋하면 워크플로 수정 없이 즉시 반영된다.
+- **설정**: `tools/telegram/config.json` — `enabled`(토글), `startHour`/`endHour`/`timezone`(발송 시간대), `quizBatchSize`/`termBatchSize`(회당 발송 개수), `reviewRatio`(복습 비율), `messageDelayMs`(메시지 간 간격). 이 파일만 고쳐 커밋하면 워크플로 수정 없이 즉시 반영된다.
 - **발송 이력**: `tools/telegram/state.json` — 항목별 발송 횟수·다음 복습 예정일(에빙하우스 간격: 1·3·7·14·30일)을 자동 기록한다. 워크플로가 매 실행 후 스스로 커밋한다 — **손으로 편집하지 않는다**.
 - **퀴즈 추가**: `tools/telegram/quiz-bank.json`에 `{id, sourceFile, question, answer(O/X), explanation}` 형식으로 추가. `sourceFile`은 실제 존재하는 판례/용어 md 경로여야 한다(발송 시 그 파일의 메타·링크를 읽어온다).
 - **비밀키**: `TELEGRAM_TOKEN`·`TELEGRAM_CHAT_ID`는 GitHub 저장소의 **Actions Secrets**에만 있다. 어떤 파일에도 하드코딩하지 않는다.
