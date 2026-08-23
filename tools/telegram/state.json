@@ -24,8 +24,13 @@
       "sendCount": 1,
       "lastSentAt": 1787481763217,
       "nextDueAt": 1787568163217
+    },
+    "term:自力執行力": {
+      "sendCount": 1,
+      "lastSentAt": 1787483876440,
+      "nextDueAt": 1787570276440
     }
   },
-  "lastSentId": "term:個人情報",
-  "lastRunAt": 1787481763217
+  "lastSentId": "term:自力執行力",
+  "lastRunAt": 1787483876440
 }
