@@ -1,0 +1,49 @@
+name: 텔레그램 공부 알리미
+
+on:
+  schedule:
+    # 30분마다 깨어난다. 실제 발송 여부는 스크립트 안에서
+    # config.json의 enabled/startHour/endHour(Asia/Seoul)를 보고 판단한다.
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: '시간대·토글 무시하고 즉시 1건 발송 (테스트용)'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: telegram-study-alerts
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 발송
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          FORCE_SEND: ${{ github.event.inputs.force == 'true' && 'true' || 'false' }}
+        run: node tools/telegram/send.mjs
+
+      - name: 발송 이력 커밋
+        run: |
+          if ! git diff --quiet -- tools/telegram/state.json; then
+            git config user.name "telegram-study-bot"
+            git config user.email "actions@users.noreply.github.com"
+            git add tools/telegram/state.json
+            git commit -m "chore: 텔레그램 발송 이력 갱신 [skip ci]"
+            git push
+          else
+            echo "발송 이력 변경 없음 (메시지를 보내지 않았거나 실패)"
+          fi

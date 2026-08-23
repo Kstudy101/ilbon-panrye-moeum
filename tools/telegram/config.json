@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "timezone": "Asia/Seoul",
+  "startHour": 8,
+  "endHour": 23,
+  "quizRatio": 0.25,
+  "reviewRatio": 0.3,
+  "siteBaseUrl": "https://ilbon-panrye-moeum.pages.dev/",
+  "_설명": {
+    "enabled": "false로 바꾸면 발송을 즉시 멈춘다(토글). 워크플로 수정 없이 이 파일만 커밋하면 된다.",
+    "timezone": "발송 시간대 판정 기준 IANA 타임존.",
+    "startHour": "이 시각(포함)부터 발송 시작. 0-23.",
+    "endHour": "이 시각(미포함) 전까지만 발송. 예: 23이면 22시대까지 발송, 23시는 발송 안 함.",
+    "quizRatio": "전체 발송 중 OX 퀴즈 카드의 비율(0~1). 나머지는 용어 카드.",
+    "reviewRatio": "선택된 채널(용어/퀴즈) 안에서 복습 항목을 고를 확률(0~1). 나머지는 신규 항목.",
+    "siteBaseUrl": "웹 책 주소. 메시지의 '바로가기' 링크를 만드는 데 쓴다."
+  }
+}

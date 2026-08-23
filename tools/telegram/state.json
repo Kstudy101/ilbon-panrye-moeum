@@ -1,0 +1,31 @@
+{
+  "items": {
+    "quiz:q15": {
+      "sendCount": 1,
+      "lastSentAt": 1787481741336,
+      "nextDueAt": 1787568141336
+    },
+    "quiz:q11": {
+      "sendCount": 1,
+      "lastSentAt": 1787481751277,
+      "nextDueAt": 1787568151277
+    },
+    "term:行政不服審査法と行政事件訴訟法の比較": {
+      "sendCount": 1,
+      "lastSentAt": 1787481758944,
+      "nextDueAt": 1787568158944
+    },
+    "term:組織再編": {
+      "sendCount": 1,
+      "lastSentAt": 1787481761144,
+      "nextDueAt": 1787568161144
+    },
+    "term:個人情報": {
+      "sendCount": 1,
+      "lastSentAt": 1787481763217,
+      "nextDueAt": 1787568163217
+    }
+  },
+  "lastSentId": "term:個人情報",
+  "lastRunAt": 1787481763217
+}
