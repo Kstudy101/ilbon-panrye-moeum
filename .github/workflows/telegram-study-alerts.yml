@@ -50,11 +50,22 @@ jobs:
             git commit -m "chore: 텔레그램 발송 이력 갱신 [skip ci]"
             # 같은 저장소에 다른 커밋이 그사이 들어왔을 수 있으니
             # rebase 후 push, 실패하면 몇 번 재시도한다(레이스 컨디션 방어).
+            ok=0
             for i in 1 2 3 4 5; do
-              git pull --rebase --autostash origin master && git push && break
+              if git pull --rebase --autostash origin master && git push; then
+                ok=1
+                break
+              fi
               echo "push 실패, 재시도 ($i/5)"
               sleep $((i * 3))
             done
+            if [ "$ok" -ne 1 ]; then
+              echo "::error::발송 이력 커밋 push가 5회 재시도 후에도 실패했습니다."
+              exit 1
+            fi
+          else
+            echo "발송 이력 변경 없음 (메시지를 보내지 않았거나 전부 실패)"
+          fi
 
       - name: 발송이 전부 실패했으면 워크플로도 실패로 표시
         if: steps.send.outcome == 'failure'
