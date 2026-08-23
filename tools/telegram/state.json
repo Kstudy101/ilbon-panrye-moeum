@@ -24,8 +24,58 @@
       "sendCount": 1,
       "lastSentAt": 1787481763217,
       "nextDueAt": 1787568163217
+    },
+    "quiz:q12": {
+      "sendCount": 1,
+      "lastSentAt": 1787484426580,
+      "nextDueAt": 1787570826580
+    },
+    "quiz:q19": {
+      "sendCount": 1,
+      "lastSentAt": 1787484426580,
+      "nextDueAt": 1787570826580
+    },
+    "quiz:q09": {
+      "sendCount": 1,
+      "lastSentAt": 1787484426580,
+      "nextDueAt": 1787570826580
+    },
+    "quiz:q01": {
+      "sendCount": 1,
+      "lastSentAt": 1787484426580,
+      "nextDueAt": 1787570826580
+    },
+    "quiz:q07": {
+      "sendCount": 1,
+      "lastSentAt": 1787484426580,
+      "nextDueAt": 1787570826580
+    },
+    "term:契約不適合責任": {
+      "sendCount": 1,
+      "lastSentAt": 1787484426580,
+      "nextDueAt": 1787570826580
+    },
+    "term:その他の用益物権": {
+      "sendCount": 1,
+      "lastSentAt": 1787484426580,
+      "nextDueAt": 1787570826580
+    },
+    "term:職業選択の自由": {
+      "sendCount": 1,
+      "lastSentAt": 1787484426580,
+      "nextDueAt": 1787570826580
+    },
+    "term:一見明白の原則": {
+      "sendCount": 1,
+      "lastSentAt": 1787484426580,
+      "nextDueAt": 1787570826580
+    },
+    "term:推定する": {
+      "sendCount": 1,
+      "lastSentAt": 1787484426580,
+      "nextDueAt": 1787570826580
     }
   },
-  "lastSentId": "term:個人情報",
-  "lastRunAt": 1787481763217
+  "lastSentId": "term:推定する",
+  "lastRunAt": 1787484426580
 }

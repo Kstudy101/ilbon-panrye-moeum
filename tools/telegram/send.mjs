@@ -1,19 +1,19 @@
 // 텔레그램 공부 알리미 발송 스크립트.
-// GitHub Actions가 주기적으로 실행한다: node tools/telegram/send.mjs
+// GitHub Actions가 20분마다 실행한다: node tools/telegram/send.mjs
 //
 // 동작 순서:
 //  1. config.json을 읽어 토글·발송 시간대를 확인한다 (범위 밖/비활성이면 조용히 종료)
 //  2. 용어(용어/*.md)와 OX 퀴즈(quiz-bank.json)를 모아 후보 풀을 만든다
-//  3. 퀴즈/용어 채널을 고르고, 그 안에서 신규:복습 = (1-reviewRatio):reviewRatio 비율로 항목을 뽑는다
+//  3. 매 실행마다 OX 퀴즈 5개 + 용어 카드 5개를 각각 신규:복습 = 70:30 비율로 뽑는다
 //     (에빙하우스 망각곡선을 흉내 낸 등차 간격 복습 스케줄 사용)
-//  4. 텔레그램 메시지를 만들어 전송하고, state.json에 발송 이력을 남긴다
+//  4. 메시지를 하나씩 순서대로 전송하고, state.json에 발송 이력을 남긴다
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   readMd, parseDoc, section, pickBullet, bullets,
-  mdToTelegramHtml, truncate, categoryLabel, koreanGloss,
-  resolveEntry, listMdFiles,
+  mdToTelegramHtml, mdBodyToTelegramHtml, bodyFromFirstHeading, truncate,
+  categoryLabel, koreanGloss, resolveEntry, listMdFiles,
 } from './lib.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -33,18 +33,17 @@ function loadJson(p, fallback) {
 function saveJson(p, obj) {
   fs.writeFileSync(p, JSON.stringify(obj, null, 2) + '\n', 'utf8');
 }
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
 
 function nowInTz(tz) {
-  // Intl로 지정 타임존의 "지금"을 구성한다 (연-월-일 시:분까지)
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: tz, hour12: false,
     year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
   }).formatToParts(new Date());
   const get = (t) => Number(parts.find(p => p.type === t).value);
-  return {
-    hour: get('hour') === 24 ? 0 : get('hour'),
-    dateKey: `${get('year')}-${String(get('month')).padStart(2, '0')}-${String(get('day')).padStart(2, '0')}`,
-  };
+  return { hour: get('hour') === 24 ? 0 : get('hour') };
 }
 
 function withinWindow(cfg) {
@@ -59,16 +58,12 @@ function buildTermPool(cfg) {
   return files.map(f => {
     const rel = '용어/' + f;
     const { title, meta, body } = parseDoc(readMd(path.join(TERM_DIR, f)));
-    const id = 'term:' + title;
-    const pointLines = section(body, '## 💡 수험 팁');
-    const exampleLines = section(body, '## 🎯 요점·예시');
     return {
-      id, channel: 'term', title, rel,
+      id: 'term:' + title, channel: 'term', title,
       category: categoryLabel(meta['과목']),
       gloss: koreanGloss(meta['읽기']),
       core: meta['한줄 정의'] || '',
-      example: pickBullet(exampleLines, '예시'),
-      tips: bullets(pointLines).slice(0, 2),
+      detailBody: bodyFromFirstHeading(body),
       link: cfg.siteBaseUrl.replace(/\/?$/, '/') + '#/e/' + encodeURIComponent(title),
     };
   });
@@ -91,38 +86,42 @@ function buildQuizPool(cfg) {
   });
 }
 
-// ---------- 항목 선택 (신규 70% / 복습 30%, 채널별) ----------
+// ---------- 항목 선택 (신규 70% / 복습 30%) ----------
 
-function pickItem(pool, state, reviewRatio, nowMs) {
-  const withState = (it) => state.items[it.id];
-  const isDue = (it) => {
-    const s = withState(it);
-    return s && s.nextDueAt && s.nextDueAt <= nowMs;
-  };
-  const newPool = pool.filter(it => !withState(it));
-  const duePool = pool.filter(isDue);
+function pickBatch(pool, state, reviewRatio, nowMs, batchSize) {
+  const excluded = new Set();
+  const picked = [];
 
-  let bucket;
-  if (newPool.length && duePool.length) {
-    bucket = Math.random() < reviewRatio ? duePool : newPool;
-  } else if (newPool.length) {
-    bucket = newPool;
-  } else if (duePool.length) {
-    bucket = duePool;
-  } else {
-    // 모든 항목을 이미 다 보냈고 복습 예정일도 안 됐다면 -> 가장 오래전에 보낸 것부터 재발송
-    bucket = [...pool].sort((a, b) => {
-      const sa = withState(a)?.lastSentAt || 0;
-      const sb = withState(b)?.lastSentAt || 0;
-      return sa - sb;
-    });
+  for (let i = 0; i < batchSize; i++) {
+    const available = pool.filter(it => !excluded.has(it.id));
+    if (!available.length) break;
+
+    const withState = (it) => state.items[it.id];
+    const isDue = (it) => {
+      const s = withState(it);
+      return s && s.nextDueAt && s.nextDueAt <= nowMs;
+    };
+    const newPool = available.filter(it => !withState(it));
+    const duePool = available.filter(isDue);
+
+    let bucket;
+    if (newPool.length && duePool.length) bucket = Math.random() < reviewRatio ? duePool : newPool;
+    else if (newPool.length) bucket = newPool;
+    else if (duePool.length) bucket = duePool;
+    else {
+      bucket = [...available].sort((a, b) => {
+        const sa = withState(a)?.lastSentAt || 0;
+        const sb = withState(b)?.lastSentAt || 0;
+        return sa - sb;
+      });
+    }
+    if (!bucket.length) break;
+
+    const item = bucket[Math.floor(Math.random() * bucket.length)];
+    picked.push(item);
+    excluded.add(item.id);
   }
-  if (!bucket.length) return null;
-
-  // 바로 직전에 보낸 항목은 가능하면 피한다
-  const filtered = bucket.filter(it => it.id !== state.lastSentId);
-  const candidates = filtered.length ? filtered : bucket;
-  return candidates[Math.floor(Math.random() * candidates.length)];
+  return picked;
 }
 
 function updateState(state, item, nowMs) {
@@ -136,32 +135,26 @@ function updateState(state, item, nowMs) {
     nextDueAt: nowMs + REVIEW_INTERVALS_DAYS[stepIdx] * dayMs,
   };
   state.lastSentId = item.id;
-  state.lastRunAt = nowMs;
 }
 
 // ---------- 메시지 포맷 ----------
 
-function formatTermMessage(it) {
+// 용어 카드: 기본 개념부터 관련 판례·수험 팁·요점/예시까지 자세히 담고 링크를 넣는다.
+function formatTermMessage(it, maxChars) {
   const titleLine = it.gloss ? `${it.gloss} (${it.title})` : it.title;
   const header = it.category ? `📌 [${it.category}] ${titleLine}` : `📌 ${titleLine}`;
-  const lines = [header, ''];
+  const lines = [header];
 
-  lines.push('💡 핵심 개념');
-  lines.push(mdToTelegramHtml(truncate(it.core, 260)));
-
-  if (it.example) {
+  if (it.core) {
     lines.push('');
-    lines.push('예시 : ' + mdToTelegramHtml(truncate(it.example, 260)));
+    lines.push('💡 <b>핵심</b>: ' + mdToTelegramHtml(it.core));
   }
 
-  if (it.tips.length) {
-    lines.push('');
-    lines.push('⚖️ 시험 출제 포인트');
-    for (const t of it.tips) lines.push('• ' + mdToTelegramHtml(truncate(t, 160)));
-  }
+  const detail = mdBodyToTelegramHtml(it.detailBody, maxChars);
+  if (detail) { lines.push(''); lines.push(detail); }
 
   lines.push('');
-  lines.push(`🔗 <a href="${it.link}">웹사이트에서 바로가기</a> (클릭)`);
+  lines.push(`🔗 <a href="${it.link}">웹사이트에서 바로가기</a>`);
   return lines.join('\n');
 }
 
@@ -174,10 +167,7 @@ function formatQuizMessage(it) {
     '👉 정답을 보려면 아래를 탭하세요', '',
     `<span class="tg-spoiler">정답: ${answerLabel}\n해설: ${mdToTelegramHtml(it.explanation)}</span>`,
   ];
-  if (it.citation) {
-    lines.push('');
-    lines.push('⚖️ ' + mdToTelegramHtml(it.citation));
-  }
+  if (it.citation) { lines.push(''); lines.push('⚖️ ' + mdToTelegramHtml(it.citation)); }
   lines.push('');
   lines.push(`🔗 <a href="${it.link}">자세히 보기</a>`);
   return lines.join('\n');
@@ -211,7 +201,7 @@ async function main() {
     return;
   }
   if (!withinWindow(cfg) && !FORCE) {
-    console.log('[telegram] 발송 시간대(' + cfg.startHour + '~' + cfg.endHour + '시, ' + cfg.timezone + ') 밖 — 종료');
+    console.log(`[telegram] 발송 시간대(${cfg.startHour}~${cfg.endHour}시, ${cfg.timezone}) 밖 — 종료`);
     return;
   }
   if (!TOKEN || !CHAT_ID) {
@@ -221,25 +211,39 @@ async function main() {
   const statePath = path.join(HERE, 'state.json');
   const state = loadJson(statePath, { items: {}, lastSentId: null, lastRunAt: null });
   const nowMs = Date.now();
+  const delayMs = cfg.messageDelayMs ?? 1200;
+  const reviewRatio = cfg.reviewRatio ?? 0.3;
 
   const termPool = buildTermPool(cfg);
   const quizPool = buildQuizPool(cfg);
 
-  const useQuiz = quizPool.length > 0 && Math.random() < (cfg.quizRatio ?? 0.25);
-  const pool = useQuiz ? quizPool : termPool;
+  const quizBatch = pickBatch(quizPool, state, reviewRatio, nowMs, cfg.quizBatchSize ?? 5);
+  const termBatch = pickBatch(termPool, state, reviewRatio, nowMs, cfg.termBatchSize ?? 5);
 
-  const item = pickItem(pool, state, cfg.reviewRatio ?? 0.3, nowMs);
-  if (!item) {
+  let sent = 0;
+  for (const it of quizBatch) {
+    await sendTelegramMessage(formatQuizMessage(it));
+    updateState(state, it, nowMs);
+    sent++;
+    console.log(`[telegram] 발송: quiz / ${it.id}`);
+    if (sent < quizBatch.length + termBatch.length) await sleep(delayMs);
+  }
+  for (const it of termBatch) {
+    await sendTelegramMessage(formatTermMessage(it, cfg.termBodyMaxChars ?? 3200));
+    updateState(state, it, nowMs);
+    sent++;
+    console.log(`[telegram] 발송: term / ${it.id}`);
+    if (sent < quizBatch.length + termBatch.length) await sleep(delayMs);
+  }
+
+  if (!sent) {
     console.log('[telegram] 보낼 항목이 없습니다.');
     return;
   }
 
-  const text = item.channel === 'quiz' ? formatQuizMessage(item) : formatTermMessage(item);
-  await sendTelegramMessage(text);
-  console.log(`[telegram] 발송 완료: ${item.channel} / ${item.id}`);
-
-  updateState(state, item, nowMs);
+  state.lastRunAt = nowMs;
   saveJson(statePath, state);
+  console.log(`[telegram] 이번 실행 총 ${sent}건 발송 완료 (퀴즈 ${quizBatch.length} / 용어 ${termBatch.length})`);
 }
 
 main().catch(err => {
