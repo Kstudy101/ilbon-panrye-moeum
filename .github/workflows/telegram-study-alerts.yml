@@ -5,7 +5,9 @@ on:
     # 20분마다 깨어난다. 실제 발송 여부는 스크립트 안에서
     # config.json의 enabled/startHour/endHour(Asia/Seoul)를 보고 판단한다.
     # 매 실행마다 OX 퀴즈 5건 + 용어 카드 5건을 보낸다(quizBatchSize/termBatchSize).
-    - cron: '*/20 * * * *'
+    # 매시 정각(00분)은 스케줄 실행이 몰려 지연·스킵되기 쉽다는 GitHub 권고에 따라
+    # 정각을 피해 07/27/47분에 맞춘다.
+    - cron: '7,27,47 * * * *'
   workflow_dispatch:
     inputs:
       force:
